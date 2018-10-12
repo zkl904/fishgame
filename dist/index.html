@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	<style>
+	*{
+		margin:0;
+		padding:0;
+	}
+	body{
+		background:#000;
+		text-align: center;
+		position:relative;
+	}
+	canvas{
+		background:url( "img/game_bg_2_hd.jpg" );
+	}
+	#chongzhi{
+		width:100px;
+		height:40px;
+		background:rgb( 51,17,0 );
+
+		color:rgb( 255,238,0 );
+		position:absolute;
+		left: 25%;
+		top :3px;
+		z-index: 3;
+		text-align: center;
+		line-height: 40px;
+		cursor: pointer;
+		user-select:none;
+	}
+	#chongzhi:hover{
+		color :#f00;
+	}
+	.shade{
+		width:100%;
+		height:100%;
+		background:#999;
+		opacity:0.5;
+		position: absolute;
+		left:0;
+		top:0;
+		z-index: 666;
+		display: none;
+	}
+	.gg{
+		width:300px;
+		height:100px;
+		color:#f00;
+		font-size: 38px;
+		text-align: center;
+		line-height: 100px;
+		position: absolute;
+		left:0;
+		right:0;
+		top:0;
+		bottom:0;
+		margin: auto;
+		user-select:none;
+		display: none;
+	}
+
+
+
+	</style>
+</head>
+<body>
+	<canvas id="c1" width="800" height = "600">
+	
+		
+	</canvas>
+	<div id ="chongzhi">充值</div>
+	<div class="shade"></div>
+	<div class="gg">game over</div>
+</body>
+</html>
+<script>
+		//封装的小工具函数
+		function rnd( n,m ){
+			return parseInt( Math.random()*(m-n) )+n ;
+		}
+		function fillzero( n){
+			return n<10?'0'+n:""+n;
+		}
+		function d2a(p ){
+			return p/180*Math.PI;
+		}
+		function a2d(p){
+			return p*180/Math.PI;
+		}
+		function numberChance( num ){
+			if( num < 37 && num >=0 ){
+				return 1 ;
+			}
+			else if(  num <57 && num >=37 ){
+				return 2 ;
+			}
+			else if( num< 72 && num >=57 ){
+				return 3;
+			}
+			else if( num < 87 && num >=72 ){
+				return 4;
+			}
+			else if( num < 97  && num >=87){
+				return 5;
+			}
+			else if( num < 99.5 & num >= 97 ){
+				return 6;
+			}
+			else if( num <100 && num >=99.5 ){
+  				return 7;
+			}
+		}
+		// 捕鱼概率
+		function randomFish(  m ,n  ){  // m炮弹  n鱼
+			var random =Math.random();
+			var q = m-n;
+			var getNum;
+			switch( q ){
+				case -6: getNum = 0.01;break;
+				case -5: getNum = 0.03;break;
+				case -4: getNum = 0.04;break;
+				case -3: getNum = 0.045;break;
+				case -2: getNum = 0.05;break;
+				case -1: getNum = 0.08;break;
+				case 0:  getNum = 0.08 + m*0.05 - n*0.04;break;
+				case 1:  getNum = 0.18;break;
+				case 2:  getNum = 0.19;break;
+				case 3:  getNum = 0.2;break;
+				case 4:  getNum = 0.25;break;
+				case 5:  getNum = 0.3;break;
+				case 6:  getNum = 0.7;break;
+
+
+			}
+			if( getNum >random ){
+				return  true;
+			}
+			else{
+				return false;
+			}
+			
+			
+		}
+		// 封装
+		// loadImage( ['fish1', 'fish2'] ,function(){} , function(){} )
+		var JSON = {};
+		function loadImage( arr,success,loading ){ // 开始的加载  arr用来存放图片
+			var count=0; // 把每张图片都加载进来
+			for( var i=0;i<arr.length;i++ ){
+				(function(  index ){
+					var oImg = new Image();
+					oImg.onload = function(){
+						count++;
+						loading && loading( count , arr.length )
+						JSON[ arr[index] ] = this;  //this指的就是OIMg
+						if( arr.length == count ){
+							success && success();
+						}
+					}
+					oImg.src ="img/"+arr[index]+".png";
+				})(i);
+				
+			}
+
+		}
+
+
+
+</script>
+<!-- 资源 -->
+<script>
+	const resource = [
+	'fish1','fish2','fish3','fish4','fish5',
+    'cannon1','cannon2','cannon3','cannon4','cannon5','cannon6','cannon7',
+    'bottom','bullet','coinAni1','coinAni2','web','coinText','number_black','shark1','shark2','001','002',"003",'004','005','jin1','jin2','jin3'
+	]
+</script>
+<!-- fish开始 -->
+<script>
+	var FISH_SIZE=[
+    null,
+    { w:55,h:37,collR:24 },  // 第一种鱼的宽高  以及碰撞圆半径
+     {w: 78, h: 64, collR: 28},
+     {w: 72, h: 56, collR: 24},
+     {w: 77, h: 59, collR: 26},
+     {w: 107, h: 122, collR: 35},
+     {w: 504, h: 270},
+     {w: 498, h: 273}
+
+	];
+	class Fish {
+		constructor( type ){
+			this.type = type || 1;
+			this.x =0;
+			this.y=0;
+			this.rotate=0;
+			switch( this.type ){
+				case 1 : this.speed = 3;break;
+				case 2 : this.speed = 2.5;break;
+				case 3 : this.speed = 2;break;
+				case 4:  this.speed = 2;break;
+				case 5:  this.speed = 1.5;break;
+				case 6:  this.speed = 1;break;
+				case 7:  this.speed = 1;break;
+			}
+			
+			this.cur = 0; // 鱼摆动的下标
+			this.collR = 17;
+			this.timer=null;
+			this.move();
+		}
+		draw( gd ){  // 画鱼
+			//console.log(11111);
+			//console.log( this.type);
+			//console.log( FISH_SIZE );
+			if( this.type <=5 ){  // 普通鱼
+				var w = FISH_SIZE[ this.type ].w;
+				var h = FISH_SIZE[ this.type].h;
+				this.collR = FISH_SIZE[ this.type ].collR;
+				gd.save();
+				gd.translate( this.x ,this.y );
+				gd.rotate( d2a( this.rotate ) );
+				if( this.rotate >90 && this.rotate <270 ){
+					gd.scale( 1,-1 );
+			}
+			gd.drawImage( JSON['fish'+this.type] ,
+				0,h*this.cur,w,h,
+				-w/2,-h/2,w,h
+			);
+			gd.restore();
+		   }
+		   // 鲨鱼
+		   else if( this.type >5 ){
+		    var w = FISH_SIZE[ this.type ].w;
+			var h = FISH_SIZE[ this.type ].h;
+			//console.log(  FISH_SIZE[6]  );
+			//console.log(FISH_SIZE[this.type])
+			//console.log(this.type)
+			gd.save();
+			gd.translate( this.x ,this.y );
+			gd.rotate( d2a( this.rotate ) );
+			if( this.rotate >90 && this.rotate <270 ){
+				gd.scale( 1,-1 );
+			}
+			gd.drawImage( JSON['shark'+(this.type-5)] ,
+				0,h*this.cur,w,h,
+				-w/2,-h/2,w,h
+			);
+			gd.restore();
+
+		   }
+		}
+		move(){  //运动开始
+			// 位移
+			
+			this.timer =setInterval(  function(){
+				this.x +=Math.cos( d2a(this.rotate) )*this.speed;
+				this.y +=Math.sin( d2a( this.rotate ) )*this.speed;
+			}.bind(this) , 30 );
+			//摇尾巴
+			setInterval(function() {
+				this.cur++;
+				if (this.type <= 5) {  // 小鱼的摆尾
+					if (this.cur == 4) {
+						this.cur = 0;
+					}
+				} else if (this.type > 5) {
+					if (this.cur == 8) {  // 鲨鱼的摆尾
+						this.cur = 0;
+					}
+				}
+			}.bind(this), 300);
+		   }
+
+		
+			//传入的两个参数x y是子弹的实时位置
+		isIn( x,y ){
+				 // 普通小鱼的判断  用圆来判断
+				if(  this.type<=5 ){
+				var a= this.x-x;
+				var b =this.y-y;
+				var c = Math.sqrt( a*a +b*b );
+				if(  c< this.collR ){
+					return true;
+				}else{
+					return false;
+				}
+			   }
+			   // 鲨鱼的判断  用椭圆来判断
+			   else if( this.type >5 ){
+			   	var w = 330;
+			    var h = 87;
+			   	var a= this.x-x;
+				var b =this.y-y;
+				var fx = (a*a)/((w/2)*(w/2)) + (b*b)/((h/2)*(h/2 ));
+				if( fx<1 ){
+					return true;
+				}
+				else{
+					return false;
+				}
+			   }
+			}
+	
+
+	}
+</script>
+<!-- 死鱼 -->
+<script>
+	  var FISH_SIZE=[
+      null,
+      {w: 55, h: 37, collR: 17},
+      {w: 78, h: 64, collR: 24},
+      {w: 72, h: 56, collR: 20},
+      {w: 77, h: 59, collR: 22},
+      {w: 107, h: 122, collR: 29},
+      {w: 504, h: 270},
+     {w: 498, h: 273}
+    ];
+    class DieFish{
+    	constructor(type){
+    		this.type = type || 1;
+    		this.x =0;
+    		this.y =0;
+    		this.rotate = 0;
+    		this.cur = 0;
+    		this.move();
+    	}
+    	draw( gd ){
+    		
+    		var w =FISH_SIZE[ this.type ].w;
+    		var h = FISH_SIZE[this.type].h;
+    		gd.save();
+    		gd.translate( this.x ,this.y );
+    		gd.rotate( d2a( this.rotate) );
+    		if(  this.type <=5 ){
+    		gd.drawImage( JSON['fish'+this.type],
+    			0,h*( this.cur+4),w,h,
+    			-w/2,-h/2,w,h
+
+	    	 );
+	    	}
+	    	// 鲨鱼
+	    	else if( this.type >5 ){
+    		gd.drawImage( JSON['shark'+(this.type-5)],
+			0,h*( this.cur+8),w,h,
+			-w/2,-h/2,w,h
+
+    	    );
+	    	}
+    		gd.restore();
+    	  }
+
+    	
+    	move(  ){
+    		//挣扎
+    		setInterval( function(){
+    			this.cur++;
+    			
+    			if( this.cur == 4 ){
+    				this.cur = 0;
+    			}    	
+    		}.bind(this),300 )
+    	}
+    	song(){
+
+    	}
+    }
+
+</script>
+<!-- 网 -->
+<script>
+	var WEB_SIZE=[
+    null,
+    {x:332,y:373,w:87,h:86},
+    {x:13,y:413,w:108,h:106},
+    {x:177,y:369,w:125,h:124},
+    {x:252,y:179,w:149,h:149},
+    {x:1,y:244,w:160,h:154},
+    {x:21,y:22,w:198,h:199},
+    {x:241,y:0,w:180,h:179}
+];
+
+   class Web{
+   	constructor(type){
+   		this.type = type || 1;
+   		this.x = 0;
+   		this.y=0;
+   		this.rotate=0;
+   		this.cur=0;
+   		this.scale=1;
+   	}
+   		draw( gd ){
+   			var x = WEB_SIZE[this.type].x;
+   			var y = WEB_SIZE[this.type].y;
+   			var w = WEB_SIZE[this.type].w;
+   			var h = WEB_SIZE[this.type].h;
+   			gd.save();
+   			
+   			gd.translate( this.x ,this.y );
+   			gd.rotate( d2a( this.rotate ) );
+   			gd.scale( this.scale,this.scale );
+   			gd.drawImage( JSON['web'],
+   				x,y,w,h,
+   				-w/2,-h/2,w,h
+   			 );
+   			gd.restore();
+   		}
+   		isIn(x,y ){
+   			var w = WEB_SIZE[this.type].w/2;
+   			var h = WEB_SIZE[this.type].h/2;
+   			var a = this.x -x;
+   			var b = this.y - y;
+   			var p = Math.sqrt(  w*w+ h*h )
+   			var c =Math.sqrt( a*a +b*b  );
+   			//console.log( c );
+   			if( c <= p ){
+   				return true;
+   			}
+   			else{
+   				return false;
+   			}
+
+   		}
+   	
+   }
+</script>
+<!-- 炮筒 -->
+<script>
+	var CANNON_SIZE =[
+	null,
+	  {w: 74, h: 74},
+      {w: 74, h: 76},
+      {w: 74, h: 76},
+      {w: 74, h: 83},
+      {w: 74, h: 85},
+      {w: 74, h: 90},
+      {w: 74, h: 94}
+
+	];
+	class Cannon{
+		constructor(type){
+			this.type =type || 1;
+			this.x = 431;
+			this.y=570;
+			this.cur=0;
+			this.rotate=0;
+			this.timer = null;
+		}
+		draw( gd ){
+			var w = CANNON_SIZE[this.type].w;
+			var h = CANNON_SIZE[this.type].h;
+			gd.save();
+			gd.translate( this.x,this.y );
+			gd.rotate( d2a(this.rotate) );
+			gd.drawImage( JSON['cannon'+this.type],
+				0,this.cur*h,w,h,
+				-w/2,-h/2,w,h
+			 );
+			gd.restore();
+		}
+		emit(){
+			var _this = this;
+			clearInterval( timer ); //防止漏掉的把之前的也清理掉
+			var timer = setInterval( function(){
+				_this.cur++;
+				if( _this.cur==5 ){
+					_this.cur=0;
+					clearInterval( timer );
+				}
+			},30 );
+
+		}
+	}
+
+
+
+</script>
+<!-- 金币 -->
+<script>
+	class Coin{
+		constructor(type){
+			this.type =type || 1;
+			this.x =0;
+			this.y =0;
+			this.cur = 0;
+			this.timer = null;
+			this.scale =1;
+			this.t=0;
+			this.move();
+			this.playSong();
+		}
+		draw( gd ){
+			gd.save();
+			gd.translate( this.x ,this.y );
+			gd.scale( this.scale ,this.scale );
+			switch( this.type ){
+				case 1 : 
+				case 2 : 
+				  gd.drawImage( JSON[ 'coinAni1' ],
+				  	0,60*this.cur , 60,60,
+				  	-60/2 ,-60/2 ,60 ,60
+				   ); break;
+				case 3 : 
+				case 4:
+				case 5:
+				case 6:
+				case 7:
+				case 8:
+				gd.drawImage( JSON[ 'coinAni2' ],
+					0,60*this.cur , 60,60,
+					-60/2 , -60/2,60,60
+				 );
+				break;
+
+			}
+			gd.restore();
+		}
+		move(){
+			clearInterval( this.timer );
+			this.timer =setInterval(  function(){
+				// this.t++;
+				// if(  this.t>=8 ){
+				// 	this.t =8;
+				this.cur++;
+				if( this.cur==10 ){
+					this.cur=0;
+				}
+				this.x+= -this.x/10;
+				this.y+=(600-this.y)/10;
+				this.scale -=0.05;
+				if( this.scale<0 ){
+					clearInterval( this.timer );
+				}
+			//}
+
+			}.bind( this ) , 50 )
+		}
+		playSong(){
+			var oA =new Audio();
+			oA.src ="snd/coin.wav";
+			oA.play();
+		}
+	}
+
+
+</script>
+<!-- 炮弹 -->
+<script>
+	var BULLET_SIZE=[
+	  null,
+      {x: 86, y: 0, w: 24, h: 26},
+      {x: 62, y: 0, w: 25, h: 29},
+      {x: 30, y: 0, w: 31, h: 35},
+      {x: 32, y: 35, w: 27, h: 31},
+      {x: 30, y: 82, w: 29, h: 33},
+      {x: 0, y: 82, w: 30, h: 34},
+      {x: 0, y: 0, w: 30, h: 44}
+	];
+	class Bullet{
+		constructor( type){
+			this.type = type || 1;
+			this.x =0;
+			this.y=0;
+			this.rotate = 0;
+			this.speed=this.type+4;  // 炮越大越快
+			this.timer =null;
+			this.move();
+		}
+		draw( gd ){
+			var w = BULLET_SIZE[ this.type ].w;
+			var h = BULLET_SIZE[ this.type ].h;
+			var x = BULLET_SIZE[ this.type ].x;
+			var y = BULLET_SIZE[ this.type ].y;
+			//开始画炮弹
+			gd.save();
+			gd.translate( this.x ,this.y );
+			gd.rotate( d2a( this.rotate )  );
+			gd.drawImage( JSON['bullet'],
+				x,y,w,h,
+				-w/2,-h/2,w,h
+
+				 );
+			gd.restore();
+		}
+		move(){
+			clearInterval( this.timer );
+			this.timer = setInterval( function(){
+				this.x+=Math.sin( d2a( this.rotate ))*this.speed ;
+				this.y-=Math.cos( d2a( this.rotate))*this.speed  ;
+			}.bind(this),30 )
+		}
+	}
+
+</script>
+<!-- 金币数值 -->
+<script>
+   class CoinText{
+   	constructor(type){
+   		this.type = type || 1;
+   		this.x =0;
+   		this.y=0;
+   		this.cur=0;
+   		this.number =0;
+
+   	}
+   	draw( gd ){
+   		gd.save();
+   		gd.translate( this.x , this.y );
+   		var w = 35.5;
+   		var h = 49;
+   		gd.drawImage( JSON[ 'coinText' ],
+   			356 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+
+   		 );
+   		//console.log( typeof this.type );
+   		switch( this.type ){
+   			case 1 : 
+   			gd.beginPath();
+   			gd.translate(35.5 , 0 );
+
+   			gd.drawImage( JSON["coinText"],
+   			35.5 , 0 ,35.5 ,49,   // 1分
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   			this.number =1;
+   		    ;break;
+   			case 2 :    // 5分
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			180 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   			this.number =5;
+   		    break;
+   			case 3 :    //  10分
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			35.5 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			0 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   		    this.number =10;
+   		    break;
+   			case 4 :   // 20分
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			70 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			0 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    )
+   			this.number =20;
+   		    ; break;
+   			case 5 :   //25分
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			70 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			180 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   		    this.number =25;
+   			break;
+   			case 6:  // 100
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			35.5 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			0 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   		    gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			0 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   		    this.number =100;
+   			break; 
+   			case 7:
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			70 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   			gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			0 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   		    gd.translate( 35.5 , 0 );
+   			gd.drawImage( JSON["coinText"],
+   			0 , 0 ,35.5 ,49,
+   			-w/2 , -h/2 ,35.5,49
+   		    );
+   		    this.number =100;
+   			break; 
+
+
+   		}
+   		gd.restore();
+   	}
+   }
+
+
+
+</script>
+
+<!-- 绘制加减号 -->
+<script>
+	class  Sortfn{
+		constructor( type ){
+			this.type = type || 1;
+			this.cur =0;
+		}
+		draw( gd ){
+			gd.save();
+			switch( this.type ){
+				case 1 : 
+				// 绘制炮台的加减号  
+	   			gd.drawImage( JSON["bottom"],  // 加号
+	   			44,77,44,27,
+	   			350,565,44,27
+	   			 );
+
+	   			// 绘制炮台的加减号
+	   			gd.drawImage( JSON["bottom"],
+	   			133,77,44,27,
+	   			470,565,44,27
+	   			 );
+	   			break;
+
+	   			case 2:  // 点击的加号与正常的减号
+	   				// 绘制炮台的加减号  
+	   			gd.drawImage( JSON["bottom"],  // 加号
+	   			1,77,44,27,
+	   			350,565,44,27
+	   			 );
+	   			// 绘制炮台的加减号
+	   			gd.drawImage( JSON["bottom"],
+	   			133,77,44,27,
+	   			470,565,44,27
+	   			 );
+   			
+	   			break;
+	   			case 3 :   // 正常的加号 与点击的减号
+	   			         // 绘制炮台的加减号
+	   			gd.drawImage( JSON["bottom"],
+	   			89,77,44,27,
+	   			470,565,44,27
+	   			 );
+	   			// 绘制炮台的加减号  
+	   			gd.drawImage( JSON["bottom"],  // 加号
+	   			44,77,44,27,
+	   			350,565,44,27
+	   			 );
+	   			break;
+
+			}
+			gd.restore();
+			
+		}
+	}
+
+
+</script>
+<!-- 调用 -->
+<!-- 左下角积分的绘制   计算分数-->
+<script>
+	class Integal{
+		constructor( type ){
+			this.type = type || 1;
+			this.x = 0;
+			this.y =0;
+			this.cur =0;
+			this.startNumber =1000;
+			//this.firatNumber = this.startNumber%10;
+		}
+		draw( gd ){
+			gd.save();
+			var numberLength = this.startNumber.toString().length;
+			var arr =[];
+			var m = this.startNumber ;
+			var n;
+		    //console.log( typeof this.startNumber );
+			for(var i =0 ;i< numberLength ;i++ ){
+			//console.log( m );
+			  n = m%10;
+			  arr[i]= n;
+			  m=parseInt( m/10 );
+			}
+			//gd.translate( this.x ,this.y );
+			for( var i = 0 ; i< numberLength ; i++  ){
+
+			//console.log( arr[i] );
+			gd.drawImage( JSON['number_black'],
+				0 , (9-arr[i])*24 ,20,24,
+			   22.5*(6-i),575,20,24
+
+			 );
+			gd.restore();
+		 }
+		}
+	}
+
+
+</script>
+<!-- 
+充值成成功显示 -->
+<script>
+	class CreateImage{
+		constructor( type ){
+			this.type =type || 1;
+			this.cur =0;
+		}
+		draw( gd ){
+			gd.save();
+			switch( this.type ){
+			case 1: break;  //空白
+			case 2 :    // 充值成功  马化腾
+			
+			gd.drawImage( JSON['001']  ,
+ 			0,0,400,300,
+  			200,100,400,300
+  			)
+  			break;
+  			case 3 :  // 不充值  诸葛亮
+  			gd.drawImage( JSON['002']  ,
+ 			0,0,450,300,
+  			200,100,450,300
+  			)
+  			break;
+  			case 4:   // 小鲨鱼  456三个
+  		    gd.drawImage( JSON['jin1']  ,  //美国
+ 			0,0,450,300,
+  			200,100,450,300
+  			)
+  			break;
+  			case 5:
+  			gd.drawImage( JSON['jin2']  ,  // 东仙队长
+ 			0,0,450,300,
+  			200,100,450,300
+  			)
+  			break;
+  			case 6:
+  			gd.drawImage( JSON['jin3']  ,  // 日本
+ 			0,0,450,300,
+  			200,100,450,300
+  			)
+  			break;
+  			//黄金鲨鱼
+  			case 7:     
+  			gd.drawImage( JSON['004']  ,  // 梁非凡
+ 			0,0,450,300,
+  			200,100,450,300
+  			)
+  			break;
+  			case 8:     
+  			gd.drawImage( JSON['005']  ,  // 周润发
+ 			0,0,450,300,
+  			200,100,450,300
+  			)
+  			break;
+
+
+  		}
+		}
+	}
+
+
+</script>
+<script>
+   window.onload = function(){
+   	var oC = document.querySelector("#c1");
+   	var gd = oC.getContext( "2d" );
+   	var rule = 0.06; // 鱼出现的概率
+   	//遮罩 和gameover 的出现
+   	var oShade = document.querySelector(".shade");
+   	var oGameover = document.querySelector(".gg");
+
+   	loadImage( resource , init );
+        // 音乐播放器
+   		var musicData =[
+		{name: "星星.mp3"},
+		{name : "HKT - 错错错.mp3"},
+		{name : "银临 - 锦鲤抄.mp3"}
+
+		];
+
+   	
+   		var backgroundMusic = new Audio();
+   		backgroundMusic.src = "snd/"+musicData[1].name;  // 默认第一首歌
+   		backgroundMusic.play();
+   		backgroundMusic.onended = function(){
+   			backgroundMusic.src = "snd/"+musicData[rnd(0,musicData.length)].name;
+   			backgroundMusic.play();
+
+   		}
+
+   			
+   		 //console.log('加载完毕');
+
+   		function init(){
+   		//设置炮弹的初始炮
+   		var c= new Cannon( rnd( 1,8 ) );
+
+   		// 设置加减号
+   		var fn = new Sortfn( 1);
+
+   		// 设置左下角积分
+   		var integal = new Integal( 1 );
+   		integal.startNumber = 1234  // 初始积分
+        //console.log(JSON);
+   		//加载成功函数
+   	
+ 
+   		var arrBullet=[] // 收集炮弹
+   		var arrFish =[]; // 存放鱼的数组
+   		var arrCoin =[]; // 存放金币的数组
+   		var arrDieFish =[]; // 存放死鱼的数组
+   		var arrWeb =[] ; // 存放渔网的数组
+   		var arrCoinText =[]; // 存放分数的数组
+   		var arrImage =[];  // 用来存放充值成功等图
+
+   		// 统一绘制
+   		setInterval( function(){
+   			gd.clearRect( 0,0,oC.width,oC.height );
+   			//绘制炮塔
+   			gd.drawImage( JSON["bottom"],
+   			0,0,765,70,
+   			0,532,765,70
+   			 );
+
+   			
+
+
+   			//统一绘制炮弹
+   			for( var i=0 ; i<arrBullet.length;i++ ){
+   				arrBullet[i].draw(gd );
+   			}
+   			//绘制炮筒
+   			c.draw( gd );
+   			//绘制死鱼
+   			for( var i =0 ;i<arrDieFish.length ;i++  ){
+   				arrDieFish[i].draw( gd );
+   			}
+   			//绘制渔网
+   			for( var i=0;i<arrWeb.length;i++ ){
+   				arrWeb[i].draw(gd);
+   			}
+   			//绘制金币
+   			for( var i =0 ; i<arrCoin.length ;i++ ){
+   				arrCoin[i].draw( gd );
+   			}
+   			//绘制分数
+   			for( var i = 0 ; i < arrCoinText.length ;i++ ){
+   				arrCoinText[i].draw( gd );
+   			}
+   			// 绘制左下角积分
+   			
+   			
+   			integal.draw( gd );
+   			//绘制充值图片
+   			for(  var i = 0; i< arrImage.length ;i++  ){
+   				arrImage[i].draw( gd );
+   			}
+
+   			//绘制加减号
+   			fn.draw( gd);
+
+   			//绘制鱼开始 判断各个方向
+
+   			
+   			var decoration = Math.random()-0.5;
+   			//console.log( decoration );
+   			if( Math.random()<rule ){ //整体的出现概率
+   				var chance = Math.random()*100;
+   				if( decoration <0 ){ //右边出现的鱼
+   					//onsole.log(  chance );
+   					//console.log(  numberChance( chance ) );
+
+   					var f1 = new Fish( numberChance( chance ) );
+   					f1.x =oC.width+300;
+   					f1.y = rnd( 100,oC.height -100 );
+   					f1.rotate = rnd( 135,225 );
+   					//console.log( oC.width );
+   				}
+   				else{
+   					var f1 = new Fish(  numberChance( chance ) );
+   					f1.x =-300;
+   					f1.y =rnd( 100,oC.height -100);
+   					f1.rotate =rnd( -45 , 45 );
+
+   				}
+   				arrFish.push( f1 );
+   			}
+   			//绘制鱼
+   			for( var i=0;i<arrFish.length ; i++ ){
+   				arrFish[i].draw( gd );
+   			}
+
+
+   			// 优化动作
+
+   			//优化鱼
+   			for( var i =0 ;i< arrFish.length;i++ ){
+   				if(arrFish[i].x<-1200 || arrFish[i].x>oC.width+1200 || arrFish[i].y<-400 || arrFish[i].y>oC.height+400  ){
+   					
+   					clearInterval( arrFish[i].timer );
+   					arrFish.splice( i ,1 );
+   					//console.log(arrFish );
+   				}
+   			}
+   			 // for( var i =0 ;i< arrBullet.length ;i++ ){
+       //        console.log( arrBullet[i].x );
+       //    }
+
+   			//优化炮弹
+   			for(var i=0; i<arrBullet.length ; i++ ){
+   				if( arrBullet[i].x <-100  || arrBullet[i].x >(oC.width+100 )|| arrBullet[i].y <-100 || arrBullet[i].y > (oC.height+100) ){
+   					//console.log(arrBullet )
+   					clearInterval( arrBullet[i].timer )
+   					arrBullet.splice( i, 1 ) ; // 清除炮弹
+
+   				}
+   			}
+   				//碰撞检测
+   		 //console.log( arrBullet.length );
+   		for( var  i =0 ;i< arrFish.length ;i++ ){
+   			for( var j=0 ; j< arrBullet.length ;j++ ){
+   				//console.log( arrBullet[j].x );
+   				if(arrFish[i].isIn( arrBullet[j].x , arrBullet[j].y ) ){ // 炮弹碰撞成功
+   					//检测渔网的成功
+   					
+
+   					var fishType = arrFish[i].type;
+   					var fishX = arrFish[i].x;
+   					var fishY = arrFish[i].y;
+   					var fishRotate = arrFish[i].rotate;
+   					var bulletType = arrBullet[j].type;
+   					var bulletX = arrBullet[j].x;
+   					var bulletY = arrBullet[j].y;
+
+
+   					// 鱼要死 ,炮弹也要消失
+   					// clearInterval( arrFish[i].timer );
+   					// arrFish.splice( i,1 );
+   					// i--;
+
+   					clearInterval( arrBullet[j].timer );
+   					arrBullet.splice(j,1);
+   					j--;
+   					//console.log( true );
+   					//碰撞之后生成渔网
+   					//var fishType = arrFish[i].type
+   					var web = new Web( bulletType  );
+   					web.x = bulletX;
+   					web.y =bulletY;
+   					arrWeb.push( web );
+
+   					//重新判断渔网
+   					for(  var k= 0 ; k<arrFish.length ;k++ ){
+   						if( web.isIn( arrFish[k].x , arrFish[k].y ) ){
+
+   							if(randomFish( bulletType ,fishType  )){
+   							//死鱼出现  定义参数
+   							var fishX1 = arrFish[k].x;
+   							var fishY1 =arrFish[k].y;
+   							var fishRotate1 = arrFish[k].rotate;
+   							var fishType1 = arrFish[k].type;
+   							
+   							//出现图片表情包
+
+   							if( fishType1 == 6 ){  //小鲨鱼  金坷垃三人组
+   								var moneytype = rnd(4,7)
+   								var money = new CreateImage(  moneytype  );
+   								switch(moneytype){
+   									case 4:
+   										var oAudio = new Audio();
+						   		  		oAudio.src= "snd/金坷垃美.mp3";
+						   		  		oAudio.play();
+						   		  		break;
+   									case 5:
+   									    var oAudio = new Audio();
+						   		  		oAudio.src= "snd/金坷垃非.mp3";
+						   		  		oAudio.play();
+						   		  		break;
+
+   									case 6:
+   										var oAudio = new Audio();
+						   		  		oAudio.src= "snd/金坷垃日.mp3";
+						   		  		oAudio.play();
+						   		  		break;
+   								}
+				   		  		arrImage.push( money );
+				   		  		setTimeout(  function(){
+				   		  			money.type= 1;
+				   		  			arrImage.shift( money );
+				   		  		},2000 )
+
+   							}
+   							if( fishType1 == 7 ){
+   								var moneytype1 = rnd(7,9)
+   								var money = new CreateImage(  moneytype1 );
+   								if(moneytype1==7){
+   									var oAudio = new Audio();
+						   		  		oAudio.src= "snd/梁非凡.mp3";
+						   		  		oAudio.play();
+						   		  		
+   								}
+   								else if(moneytype1==8){
+									var oAudio = new Audio();
+						   		  		oAudio.src= "snd/铃声 - 赌神出场音乐 (铃声).mp3";
+						   		  		oAudio.play();
+
+								}
+				   		  		arrImage.push( money );
+				   		  		setTimeout(  function(){
+				   		  			money.type= 1;
+				   		  			arrImage.shift( money );
+				   		  		},2000 )
+
+   							}
+
+   							// 鱼死亡
+   							clearInterval( arrFish[k].timer );
+   							arrFish.splice( k,1 );
+
+   							var diefish = new DieFish( fishType1 )
+   								diefish.x = fishX1;
+			   					diefish.y = fishY1;
+			   					diefish.rotate = fishRotate1;
+			   					arrDieFish.push( diefish );
+			   				//金币的出现
+			   				var coin = new Coin( fishType1 );
+		   					  coin.x = fishX1-50;
+		   					  coin.y = fishY1;
+		   					  arrCoin.push( coin );
+		   					// 分数的出现
+		   					var coinText = new CoinText( fishType1 );
+		   					coinText.x = fishX1;
+		   					coinText.y = fishY1;
+		   					coinText.draw( gd );
+		   					arrCoinText.push( coinText );
+
+		   					// 分数加给左下角的积分
+		   					//console.log( coinText.number  );
+		   					integal.startNumber+=coinText.number;
+			   				//和渔网一样,过一段时间后就消失
+		   					setTimeout(  function(){
+		   					  arrDieFish.shift( );
+		   					  arrCoinText.shift(  );
+		   					  		   					
+		   					}.bind( this ),500)
+		   					//console.log( arrFish );
+		   				}
+			   								   							
+   						}
+   					}
+
+   					//渔网一段时间后消失
+   					setTimeout( function(){
+   						arrWeb.shift( web );
+   						
+   					}.bind(this) ,500);
+   					
+
+   					// var diefish = new DieFish( fishType );
+   					// diefish.x = fishX;
+   					// diefish.y = fishY;
+   					// diefish.rotate = fishRotate;
+   					// arrDieFish.push( diefish );
+   					
+   				}
+   			}
+   		}
+
+
+   		},16 );
+   	
+   		//交互  鼠标电脑  炮台的角度就得变化
+   		oC.onclick=function( ev ){
+
+   			//切换炮弹
+   			var fnx = ev.pageX - oC.offsetLeft;
+   			var fny = ev.pageY  -oC.offsetTop;
+   				//console.log( fnx , fny )
+   			if( fnx > 350 && fnx <394 && fny >565 && fny < 592 ){
+
+   				//炮弹切换
+   				fn.type = 2;
+   				c.type++
+   				if( c.type >= 7  ){
+   					c.type = 7;
+   				}
+   				setTimeout( function(){
+   					fn.type = 1;
+   				},100 )
+   			}
+   			else if( fnx > 470 && fnx <514 && fny >565 && fny < 592 ){
+   				fn.type =3;
+   				c.type --;
+   				if( c.type <=1 ){
+   					c.type = 1;
+   				}
+   				setTimeout( function(){
+   					fn.type = 1;
+   				},100 )
+   			}
+   			else{
+
+
+   			//左下角分数变化
+   			//var integal = new Integal( 1 );
+   			integal.startNumber-=c.type;
+   			integal.draw( gd );
+   			if( integal.startNumber<=0 ){
+   				var ffn = confirm("要选择充值吗");
+   				if(ffn){
+   					integal.startNumber+=1000;
+   					var type= 2
+   		  		    var money = new CreateImage(  type  );
+   		  		    arrImage.push( money );
+   		  		    setTimeout(  function(){
+   		  			money.type= 1;
+   		  			arrImage.shift( money );
+   		  		},1000 )
+   				}
+   				else{
+   				oShade.style.display="block";
+   				oGameover.style.display="block";
+   				
+
+   				}
+   				
+
+
+   			}
+   			//点击出现声音
+   			// var oA = new Audio();
+   			// oA.src = "snd/cannon.mp3";
+   			// oA.play();
+   			var x = ev.clientX- oC.offsetLeft-c.x;
+   			var y = c.y-(ev.clientY-oC.offsetTop);
+   			var d= a2d(Math.atan2( x,y ));
+   			//console.log( d );
+   			c.rotate = d;
+   			//发射频率
+   			c.emit();
+
+   			//出炮弹
+   			var b = new Bullet( c.type );
+   			b.rotate = c.rotate;
+   			b.x = c.x;
+   			b.y = c.y;
+   			arrBullet.push( b );
+   		       }
+   		  };
+   		  document.querySelector("#chongzhi").onclick =function(){
+   		  	var f = confirm( "您选择充值码" );
+   		  	if( f ){
+   		  		integal.startNumber+=1000;
+   		  		//console.log( gd );
+   		  		// var oImg = new Image();
+   		  		// var timer  =null;
+   		  		// oImg.onload = function(){
+   		  		// 	timer = setInterval( function(){
+   		  		// 	gd.drawImage( this ,
+   		  		// 	0,0,400,300,
+   		  		// 	200,100,400,300
+
+   		  		// 	)
+
+   		  		// 	}.bind(this) )
+   		  			
+   		  		// }
+   		  		// oImg.src = "img/001.jpg";
+   		  		var type= 2
+   		  		var money = new CreateImage(  type  );
+   		  		arrImage.push( money );
+   		  		setTimeout(  function(){
+   		  			money.type= 1;
+   		  			arrImage.shift( money );
+   		  		},1000 )
+
+   		  		
+
+   		  	}
+   		  	else{
+   		  		var type= 3;
+   		  		var money = new CreateImage(  type  );
+   		  		arrImage.push( money );
+   		  		setTimeout(  function(){
+   		  			money.type= 1;
+   		  			arrImage.shift( money );
+   		  		},1000 )
+   		  		var oAudio = new Audio();
+   		  		oAudio.src= "snd/厚颜无耻之人.mp3";
+   		  		oAudio.play();
+
+
+   		  	}
+   		  }
+
+
+
+   		}
+   }
+
+</script>
